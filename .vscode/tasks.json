@@ -1,0 +1,69 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Validate ARM Template",
+            "type": "shell",
+            "command": "az",
+            "args": [
+                "deployment",
+                "group",
+                "validate",
+                "--resource-group",
+                "${input:resourceGroupName}",
+                "--template-file",
+                "mainTemplate.json",
+                "--parameters",
+                "@azuredeploy.parameters.json"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Deploy ARM Template",
+            "type": "shell",
+            "command": "az",
+            "args": [
+                "deployment",
+                "group",
+                "create",
+                "--resource-group",
+                "${input:resourceGroupName}",
+                "--template-file",
+                "mainTemplate.json",
+                "--parameters",
+                "@azuredeploy.parameters.json",
+                "--name",
+                "vm-deployment-${input:deploymentName}"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "resourceGroupName",
+            "description": "Enter the Azure Resource Group name",
+            "default": "rg-vm-deployment",
+            "type": "promptString"
+        },
+        {
+            "id": "deploymentName",
+            "description": "Enter a deployment name",
+            "default": "$(date +%Y%m%d-%H%M%S)",
+            "type": "promptString"
+        }
+    ]
+}

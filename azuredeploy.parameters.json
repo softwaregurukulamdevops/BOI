@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": {
+      "value": "vm-secure-gallery"
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "authenticationType": {
+      "value": "password"
+    },
+    "adminPasswordOrKey": {
+      "value": "Admin@12345678"
+    },
+    "vmSize": {
+      "value": "Standard_D2s_v5"
+    },
+    "virtualNetworkName": {
+      "value": "vm-central-vnet"
+    },
+    "subnetName": {
+      "value": "subnet-secure-vm"
+    },
+    "computeGalleryName": {
+      "value": "cg_centralized"
+    },
+    "computeGalleryImageDefinition": {
+      "value": "id_testing"
+    },
+    "computeGalleryImageVersion": {
+      "value": "latest"
+    },
+    "computeGalleryResourceGroup": {
+      "value": "RG_Centralized"
+    },
+    "keyVaultName": {
+      "value": "kvcentralized"
+    },
+    "keyVaultResourceGroup": {
+      "value": "RG_Centralized"
+    },
+    "diskEncryptionKeyName": {
+      "value": "ds_centralized"
+    },
+    "enableSecureBoot": {
+      "value": true
+    },
+    "enableVtpm": {
+      "value": true
+    }
+  }
+}

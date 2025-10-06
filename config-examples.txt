@@ -1,0 +1,82 @@
+# Azure VM Deployment Configuration Examples
+# Copy one of these configurations to azuredeploy.parameters.json and customize
+
+# ================================
+# Development Environment Example
+# ================================
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": { "value": "vm-dev-gallery" },
+    "adminUsername": { "value": "devuser" },
+    "authenticationType": { "value": "sshPublicKey" },
+    "adminPasswordOrKey": { "value": "ssh-rsa AAAAB3NzaC1yc2EAAAA... your-ssh-key-here" },
+    "vmSize": { "value": "Standard_D2s_v5" },
+    "virtualNetworkName": { "value": "vnet-dev" },
+    "subnetName": { "value": "subnet-dev" },
+    "computeGalleryName": { "value": "gallery_dev_images" },
+    "computeGalleryImageDefinition": { "value": "ubuntu-20-04-lts" },
+    "computeGalleryImageVersion": { "value": "1.0.0" },
+    "computeGalleryResourceGroup": { "value": "rg-shared-images" },
+    "keyVaultName": { "value": "kv-dev-encryption-001" },
+    "keyVaultResourceGroup": { "value": "rg-security-dev" },
+    "diskEncryptionKeyName": { "value": "disk-encryption-key-dev" },
+    "enableSecureBoot": { "value": true },
+    "enableVtpm": { "value": true }
+  }
+}
+
+# ================================
+# Production Environment Example
+# ================================
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": { "value": "vm-prod-web-001" },
+    "adminUsername": { "value": "azureuser" },
+    "authenticationType": { "value": "sshPublicKey" },
+    "adminPasswordOrKey": { "value": "ssh-rsa AAAAB3NzaC1yc2EAAAA... your-ssh-key-here" },
+    "vmSize": { "value": "Standard_D4s_v5" },
+    "virtualNetworkName": { "value": "vnet-prod-web" },
+    "subnetName": { "value": "subnet-web-tier" },
+    "computeGalleryName": { "value": "gallery_prod_images" },
+    "computeGalleryImageDefinition": { "value": "ubuntu-20-04-hardened" },
+    "computeGalleryImageVersion": { "value": "2.1.0" },
+    "computeGalleryResourceGroup": { "value": "rg-shared-images-prod" },
+    "keyVaultName": { "value": "kv-prod-encryption-001" },
+    "keyVaultResourceGroup": { "value": "rg-security-prod" },
+    "diskEncryptionKeyName": { "value": "disk-encryption-key-prod" },
+    "enableSecureBoot": { "value": true },
+    "enableVtpm": { "value": true }
+  }
+}
+
+# ================================
+# Windows VM Example
+# ================================
+# Note: For Windows VMs, you may need to adjust the ARM template
+# to use Windows-specific configurations and extensions
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": { "value": "vm-win-gallery" },
+    "adminUsername": { "value": "winadmin" },
+    "authenticationType": { "value": "password" },
+    "adminPasswordOrKey": { "value": "YourSecurePassword123!" },
+    "vmSize": { "value": "Standard_D4s_v5" },
+    "virtualNetworkName": { "value": "vnet-windows" },
+    "subnetName": { "value": "subnet-windows" },
+    "computeGalleryName": { "value": "gallery_windows_images" },
+    "computeGalleryImageDefinition": { "value": "windows-server-2022" },
+    "computeGalleryImageVersion": { "value": "latest" },
+    "computeGalleryResourceGroup": { "value": "rg-shared-images" },
+    "keyVaultName": { "value": "kv-windows-encryption" },
+    "keyVaultResourceGroup": { "value": "rg-security" },
+    "diskEncryptionKeyName": { "value": "disk-encryption-key-win" },
+    "enableSecureBoot": { "value": true },
+    "enableVtpm": { "value": true }
+  }
+}

@@ -1,0 +1,323 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "This template creates a VM from a compute gallery image with disk encryption and trusted launch enabled"
+  },
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the virtual machine"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Admin username for the VM"
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "defaultValue": "sshPublicKey",
+      "allowedValues": [
+        "sshPublicKey",
+        "password"
+      ],
+      "metadata": {
+        "description": "Type of authentication to use on the Virtual Machine"
+      }
+    },
+    "adminPasswordOrKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "SSH Key or password for the Virtual Machine"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D2s_v5",
+      "metadata": {
+        "description": "Size of the virtual machine (must support trusted launch)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "vnet-vm",
+      "metadata": {
+        "description": "Name of the virtual network"
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "subnet-vm",
+      "metadata": {
+        "description": "Name of the subnet"
+      }
+    },
+    "computeGalleryName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the compute gallery"
+      }
+    },
+    "computeGalleryImageDefinition": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the image definition in the compute gallery"
+      }
+    },
+    "computeGalleryImageVersion": {
+      "type": "string",
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Version of the image in the compute gallery"
+      }
+    },
+    "computeGalleryResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group containing the compute gallery"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Key Vault for disk encryption"
+      }
+    },
+    "keyVaultResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource group containing the Key Vault"
+      }
+    },
+    "diskEncryptionKeyName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the key in Key Vault for disk encryption"
+      }
+    },
+    "enableSecureBoot": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable secure boot for trusted launch"
+      }
+    },
+    "enableVtpm": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable vTPM for trusted launch"
+      }
+    }
+  },
+  "variables": {
+    "networkSecurityGroupName": "[format('nsg-{0}', parameters('vmName'))]",
+    "networkInterfaceName": "[format('nic-{0}', parameters('vmName'))]",
+    "publicIpAddressName": "[format('pip-{0}', parameters('vmName'))]",
+    "osDiskName": "[format('disk-{0}-os', parameters('vmName'))]",
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]",
+    "linuxConfiguration": {
+      "disablePasswordAuthentication": true,
+      "ssh": {
+        "publicKeys": [
+          {
+            "path": "[format('/home/{0}/.ssh/authorized_keys', parameters('adminUsername'))]",
+            "keyData": "[parameters('adminPasswordOrKey')]"
+          }
+        ]
+      }
+    },
+    "imageReference": {
+      "id": "[resourceId(parameters('computeGalleryResourceGroup'), 'Microsoft.Compute/galleries/images/versions', parameters('computeGalleryName'), parameters('computeGalleryImageDefinition'), parameters('computeGalleryImageVersion'))]"
+    },
+    "keyVaultId": "[resourceId(parameters('keyVaultResourceGroup'), 'Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+    "diskEncryptionKeyUrl": "[format('https://{0}.vault.azure.net/keys/{1}', parameters('keyVaultName'), parameters('diskEncryptionKeyName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-04-01",
+      "name": "[variables('networkSecurityGroupName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "SSH",
+            "properties": {
+              "priority": 1001,
+              "protocol": "TCP",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "22"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-04-01",
+      "name": "[parameters('virtualNetworkName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2023-04-01",
+      "name": "[variables('publicIpAddressName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[toLower(format('{0}-{1}', parameters('vmName'), uniqueString(resourceGroup().id)))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-04-01",
+      "name": "[variables('networkInterfaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpAddressName'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpAddressName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-03-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[if(equals(parameters('authenticationType'), 'password'), parameters('adminPasswordOrKey'), null())]",
+          "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'sshPublicKey'), variables('linuxConfiguration'), null())]"
+        },
+        "storageProfile": {
+          "imageReference": "[variables('imageReference')]",
+          "osDisk": {
+            "name": "[variables('osDiskName')]",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Premium_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+            }
+          ]
+        },
+        "securityProfile": {
+          "securityType": "TrustedLaunch",
+          "uefiSettings": {
+            "secureBootEnabled": "[parameters('enableSecureBoot')]",
+            "vTpmEnabled": "[parameters('enableVtpm')]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2023-03-01",
+      "name": "[format('{0}/AzureDiskEncryption', parameters('vmName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publisher": "Microsoft.Azure.Security",
+        "type": "AzureDiskEncryptionForLinux",
+        "typeHandlerVersion": "1.1",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "EncryptionOperation": "EnableEncryption",
+          "KeyVaultURL": "[reference(variables('keyVaultId'), '2023-02-01').vaultUri]",
+          "KeyVaultResourceId": "[variables('keyVaultId')]",
+          "KeyEncryptionKeyURL": "[variables('diskEncryptionKeyUrl')]",
+          "KekVaultResourceId": "[variables('keyVaultId')]",
+          "KeyEncryptionAlgorithm": "RSA-OAEP",
+          "VolumeType": "All",
+          "ResizeOSDisk": false
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "hostname": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpAddressName')), '2023-04-01').dnsSettings.fqdn]"
+    },
+    "sshCommand": {
+      "type": "string",
+      "value": "[format('ssh {0}@{1}', parameters('adminUsername'), reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpAddressName')), '2023-04-01').dnsSettings.fqdn)]"
+    },
+    "vmResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+    }
+  }
+}
