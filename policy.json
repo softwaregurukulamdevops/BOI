@@ -1,0 +1,174 @@
+{
+  "properties": {
+    "displayName": "Configure NSG Flow Logs and Traffic Analytics",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Deploys NSG Flow Logs and enables Traffic Analytics for Network Security Groups.",
+    "metadata": {
+      "category": "Network",
+      "version": "1.0.0"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "allowedValues": ["DeployIfNotExists", "Disabled"],
+        "defaultValue": "DeployIfNotExists"
+      },
+      "nsgRegion": {
+        "type": "String",
+        "metadata": {
+          "displayName": "NSG Region",
+          "strongType": "location"
+        }
+      },
+      "networkWatcherRG": {
+        "type": "String",
+        "defaultValue": "NetworkWatcherRG"
+      },
+      "networkWatcherName": {
+        "type": "String",
+        "metadata": {
+          "strongType": "Microsoft.Network/networkWatchers"
+        }
+      },
+      "storageAccountId": {
+        "type": "String",
+        "metadata": {
+          "strongType": "Microsoft.Storage/storageAccounts",
+          "assignPermissions": true
+        }
+      },
+      "workspaceResourceId": {
+        "type": "String",
+        "metadata": {
+          "strongType": "Microsoft.OperationalInsights/workspaces",
+          "assignPermissions": true
+        }
+      },
+      "workspaceRegion": {
+        "type": "String",
+        "metadata": {
+          "strongType": "location"
+        }
+      },
+      "trafficAnalyticsInterval": {
+        "type": "String",
+        "allowedValues": ["10", "60"],
+        "defaultValue": "60"
+      },
+      "retentionDays": {
+        "type": "Integer",
+        "defaultValue": 30
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Network/networkSecurityGroups"
+          },
+          {
+            "field": "location",
+            "equals": "[parameters('nsgRegion')]"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]",
+        "details": {
+          "type": "Microsoft.Network/networkWatchers/flowLogs",
+          "roleDefinitionIds": [
+            "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+          ],
+          "existenceCondition": {
+            "allOf": [
+              {
+                "field": "Microsoft.Network/networkWatchers/flowLogs/enabled",
+                "equals": "true"
+              },
+              {
+                "field": "Microsoft.Network/networkWatchers/flowLogs/flowAnalyticsConfiguration.networkWatcherFlowAnalyticsConfiguration.enabled",
+                "equals": "true"
+              }
+            ]
+          },
+          "deployment": {
+            "properties": {
+              "mode": "incremental",
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "parameters": {
+                  "networkWatcherName": { "type": "string" },
+                  "location": { "type": "string" },
+                  "nsgId": { "type": "string" },
+                  "storageAccountId": { "type": "string" },
+                  "workspaceResourceId": { "type": "string" },
+                  "workspaceRegion": { "type": "string" },
+                  "trafficAnalyticsInterval": { "type": "string" },
+                  "retentionDays": { "type": "int" }
+                },
+                "resources": [
+                  {
+                    "type": "Microsoft.Network/networkWatchers/flowLogs",
+                    "apiVersion": "2022-09-01",
+                    "name": "[concat(parameters('networkWatcherName'), '/', uniqueString(parameters('nsgId')))]",
+                    "location": "[parameters('location')]",
+                    "properties": {
+                      "targetResourceId": "[parameters('nsgId')]",
+                      "storageId": "[parameters('storageAccountId')]",
+                      "enabled": true,
+                      "retentionPolicy": {
+                        "enabled": true,
+                        "days": "[parameters('retentionDays')]"
+                      },
+                      "flowAnalyticsConfiguration": {
+                        "networkWatcherFlowAnalyticsConfiguration": {
+                          "enabled": true,
+                          "workspaceRegion": "[parameters('workspaceRegion')]",
+                          "workspaceResourceId": "[parameters('workspaceResourceId')]",
+                          "trafficAnalyticsInterval": "[parameters('trafficAnalyticsInterval')]"
+                        }
+                      },
+                      "format": {
+                        "type": "JSON",
+                        "version": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              "parameters": {
+                "networkWatcherName": {
+                  "value": "[last(split(parameters('networkWatcherName'), '/'))]"
+                },
+                "location": {
+                  "value": "[field('location')]"
+                },
+                "nsgId": {
+                  "value": "[field('id')]"
+                },
+                "storageAccountId": {
+                  "value": "[parameters('storageAccountId')]"
+                },
+                "workspaceResourceId": {
+                  "value": "[parameters('workspaceResourceId')]"
+                },
+                "workspaceRegion": {
+                  "value": "[parameters('workspaceRegion')]"
+                },
+                "trafficAnalyticsInterval": {
+                  "value": "[parameters('trafficAnalyticsInterval')]"
+                },
+                "retentionDays": {
+                  "value": "[parameters('retentionDays')]"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
